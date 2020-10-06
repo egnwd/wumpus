@@ -1,86 +1,77 @@
 \documentclass{beamer}
 \usetheme{Boadilla}
-% \usecolortheme{dove}
+\usepackage[cache=false]{minted}
 \usepackage{multicol}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\graphicspath{{./images/}}
+\input{defs}
 
 \begin{document}
-\title{The Three Monadeers}
+\titlegraphic{\vspace{-3em}\includegraphics[width=.3\textwidth]{hunted-wumpus.jpg}}
+\title{Hunt the Trevor}
 \author{Elliot Greenwood}
-\institute[FundApps]{FundApps \medskip \textit{elliot@fundapps.co}}
-\date{\today}
-  \begin{frame}
+\date{}
+  \begin{frame}[fragile]
     \titlepage%
   \end{frame}
-  \begin{frame}
-    \begin{multicols}{2}
-      \tableofcontents
-    \end{multicols}
+  \begin{frame}{Agenda}
+    \begin{columns}[t]
+      \begin{column}{.4\textwidth}
+        \tableofcontents[sections={1-2}]
+      \end{column}
+      \begin{column}{.4\textwidth}
+        \tableofcontents[sections={3-5}]
+      \end{column}
+    \end{columns}
   \end{frame}
-  \section{What is a Monad? (Recap)}
+  \section{What is a Monad?}
   \subsection{Intuition}
-  \begin{frame}{What is a Monad?}{Intuition}
-    \begin{block}{Intro}
-      Hello
-    \end{block}
+  \begin{frame}[fragile]{What is a Monad? (Recap)}{Intuition}
+    Let's make a program
+    
+    \begin{minted}{haskell}
+      main = do putStrLn "What is 2 + 2?"
+                x <- readLn
+                if x == 4
+                    then putStrLn "You're right!"
+                    else putStrLn "You're wrong!"
+    \end{minted}
   \end{frame}
   \subsection{Theory}
-  \begin{frame}{What is a Monad?}{Theory}
-    \begin{block}{Return}
-      This is return/pure
+  \begin{frame}{What is a Monad? (Recap)}{Theory}
+    \begin{block}{Functor Definition}
+      \begin{align*}
+        \fmap &:: \mathbf{Functor}\ \mathsf{F}\ \Rightarrow\ (a\ \rightarrow\ b)\ \rightarrow\ \F{a}\ \rightarrow\ \F{b}\\
+      \end{align*}
     \end{block}
-    \begin{block}{Bind}
-      This is Bind
+    \begin{block}{Applicative Definition}
+      \begin{align*}
+        \pure &:: \mathbf{Applicative}\ \mathsf{A}\ \Rightarrow\ a\ \rightarrow\ \A{a}\\
+        (\app) &:: \mathbf{Applicative}\ \mathsf{A}\ \Rightarrow\ \A{(a\ \rightarrow\ b)}\ \rightarrow\ \A{a}\ \rightarrow\ \A{b}\\
+      \end{align*}
     \end{block}
   \end{frame}
-
-  % Reader.tex
-  \section{Reader}
-  \subsection{First Principals}
-  \begin{frame}
-    
-  \end{frame}
-  \subsection{Definition}
-  \begin{frame}
-    
-  \end{frame}
-  \subsection{Example}
-  \begin{frame}
-    
-  \end{frame}
-
-  % Writer.tex
-  \section{Writer}
-  \subsection{First Principals}
-  \begin{frame}
-    
-  \end{frame}
-  \subsection{Definition}
-  \begin{frame}
-    
-  \end{frame}
-  \subsection{Example}
-  \begin{frame}
-    
+  \begin{frame}{What is a Monad? (Recap)}{Theory}
+    \begin{block}{Monad Definition}
+      \begin{align*}
+        \return &:: \mathbf{Monad}\ \mathsf{M}\ \Rightarrow\ a\ \rightarrow\ \M{a}\\
+        (\bind) &:: \mathbf{Monad}\ \mathsf{M}\ \Rightarrow\ \M{a}\ \rightarrow\ (a\ \rightarrow\ \M{b})\ \rightarrow\ \M{b}\\
+      \end{align*}
+    \end{block}
+    \begin{itemize}
+      \item $\return$ constructs the monad\\
+      \item $\bind$ allows composition of the monad\\
+      \item Note: You might see other people say you need $\join$ to define the monad,
+        providing either $\bind$ or $\join$ is ``rigorously'' equivalent.
+    \end{itemize}
   \end{frame}
 
-  % State.tex
-  \section{State}
-  \subsection{First Principals}
-  \begin{frame}
-    
-  \end{frame}
-  \subsection{Definition}
-  \begin{frame}
-    
-  \end{frame}
-  \subsection{Example}
-  \begin{frame}
-    
-  \end{frame}
-
-  % FinalExample.tex
-  \section{The Final Showdown}
-  \begin{frame}
-    
-  \end{frame}
+  \input{reader}%
+  \input{writer}%
+  \input{state}%
+  \input{final}%
 \end{document}
