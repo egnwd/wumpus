@@ -1,22 +1,23 @@
-module Messages ( youAreInCave
-                , tunnelsLeadTo
-                , moveOrShoot
-                , moveOrShootInstr
-                , whereTo
-                , whereToInstr
-                , senseWumpus
-                , senseBats
-                , sensePits
-                , loseWumpus
-                , losePits
-                , loseArrows
-                , encounterWumpus
-                , encounterBats
-                , winWumpus
-                , missed
-                , win
-                , lose
-                ) where
+module Messages
+  ( youAreInCave
+  , tunnelsLeadTo
+  , moveOrShoot
+  , moveOrShootInstr
+  , whereTo
+  , whereToInstr
+  , senseWumpus
+  , senseBats
+  , sensePits
+  , loseWumpus
+  , losePits
+  , loseArrows
+  , encounterWumpus
+  , encounterBats
+  , winWumpus
+  , missed
+  , win
+  , lose
+  ) where
 
 import Data.List
 
