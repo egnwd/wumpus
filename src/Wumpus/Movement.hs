@@ -2,6 +2,7 @@ module Wumpus.Movement
   ( getAction
   ) where
 
+import Control.Monad.IO.Class
 import Data.Char
 import Data.Functor.Syntax
 import Text.Read (readMaybe)
@@ -9,8 +10,8 @@ import Text.Read (readMaybe)
 import Wumpus.Data
 import qualified Wumpus.Messages as Msg
 
-getAction :: [Cave] -> IO Action
-getAction ts = getCommand <*> getCave ts
+getAction :: (MonadIO m) => [Cave] -> m Action
+getAction ts = liftIO $ getCommand <*> getCave ts
 
 getCommand :: IO (Cave -> Action)
 getCommand = do

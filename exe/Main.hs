@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 module Main where
 
 import Data.Time.Clock.POSIX (getPOSIXTime)
@@ -10,4 +9,3 @@ main = do
   seed <- (round . (* 1000)) <$> getPOSIXTime
   gs <- runWumpus (initialState seed) initialWorld
   print gs
-

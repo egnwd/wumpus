@@ -21,6 +21,7 @@ library
     Wumpus.Data
     Wumpus.Messages
     Wumpus.Movement
+    Wumpus.Utils
 
   hs-source-dirs:   src
   default-language: Haskell2010
