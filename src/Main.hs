@@ -7,6 +7,9 @@ import Data.Char
 import Data.Functor.Syntax
 import Data.Graph
 import Data.List
+import System.Random
+import Data.Time.Clock.POSIX (getPOSIXTime)
+import Text.Read (readMaybe)
 
 import qualified Messages as Msg
 
@@ -14,7 +17,8 @@ import qualified Messages as Msg
 main :: IO ()
 main = do
   putStrLn "Welcome to \"Hunt the Wumpus\"!!"
-  gs <- loop initialWorld initialState
+  seed <- (round . (* 1000)) <$> getPOSIXTime
+  gs <- loop initialWorld (initialState seed)
   print gs
 
 type Cave = Int
@@ -35,6 +39,7 @@ data GameState = GameState
   , gHistory      :: [Action]
   , trevor        :: Cave
   , gameOver      :: Maybe Result
+  , gen           :: StdGen
   } deriving (Show)
 
 initialWorld :: WorldConfig
@@ -74,13 +79,14 @@ intialTrevor = 20
 intitalPits  = [12, 8]
 initialBats  = [2, 17]
 
-initialState :: GameState
-initialState = GameState
+initialState :: Int -> GameState
+initialState seed = GameState
   { crookedArrows = 5
   , gCave         = 1
   , gHistory      = []
   , trevor        = intialTrevor
   , gameOver      = Nothing
+  , gen           = mkStdGen seed
   }
 
 printM_ :: (MonadIO m, Foldable t) => t String -> m ()
@@ -122,12 +128,10 @@ getAction = do
 getCave :: [Cave] -> IO Cave
 getCave tunnels = do
   putStrLn $ Msg.whereTo
-  cave <- readLn :: IO Cave
-  if cave `elem` tunnels
-     then return cave
-     else do
-       putStrLn $ Msg.whereToInstr tunnels
-       getCave tunnels
+  cave <- readMaybe <$> getLine
+  case cave of
+    Just c | c `elem` tunnels -> return c
+    _                         -> putStrLn (Msg.whereToInstr tunnels) >> getCave tunnels
 
 sense :: WorldConfig -> GameState -> Cave -> [String]
 sense wc gs c = trevorE $ batsE $ pitsE []
@@ -139,30 +143,35 @@ sense wc gs c = trevorE $ batsE $ pitsE []
 
 execute :: WorldConfig -> GameState -> Action -> ([String], GameState)
 execute wc gs a@(Move c)
-  | (trevor gs) == c   = ([Msg.encounterWumpus], gs' { gameOver = Just Lose })
-  | c `elem` (pits wc) = ([Msg.losePits], gs' { gameOver = Just Lose })
-  | c `elem` (bats wc) = ([Msg.encounterBats], gs { gCave = emptyCave wc gs })
+  | (trevor gs) == c   = ([Msg.encounterWumpus], gs'' { gameOver = Just Lose })
+  | c `elem` (pits wc) = ([Msg.losePits], gs'' { gameOver = Just Lose })
+  | c `elem` (bats wc) = ([Msg.encounterBats], gs'' { gCave = eCave })
   | otherwise          = ([], gs')
   where
-    gs' = gs { gCave = c, gHistory = a : (gHistory gs) }
+    (eCave, gs')       = emptyCave wc gs
+    gs'' = gs' { gCave = c, gHistory = a : (gHistory gs) }
 
 execute wc gs a@(Shoot c)
-  | (trevor gs) == c     = ([Msg.winWumpus], gs' { gameOver = Just Win })
-  | remainingArrows == 0 = ([Msg.missed, Msg.loseArrows], gs' { gameOver = Just Lose })
-  | newTrevor == c       = ([Msg.loseWumpus], gs' { trevor = newTrevor, gameOver = Just Lose })
-  | otherwise            = ([Msg.missed], gs' { trevor = newTrevor })
+  | (trevor gs) == c     = ([Msg.winWumpus], gs'' { gameOver = Just Win })
+  | remainingArrows == 0 = ([Msg.missed, Msg.loseArrows], gs'' { gameOver = Just Lose })
+  | newTrevor == c       = ([Msg.loseWumpus], gs'' { trevor = newTrevor, gameOver = Just Lose })
+  | otherwise            = ([Msg.missed], gs'' { trevor = newTrevor })
   where
-    remainingArrows = (crookedArrows gs) - 1
-    newTrevor       = anotherCave wc gs
-    gs' = gs { crookedArrows = remainingArrows, gHistory = a : (gHistory gs)}
+    remainingArrows          = (crookedArrows gs) - 1
+    (newTrevor, gs')         = anotherCave wc gs
+    gs'' = gs' { crookedArrows = remainingArrows, gHistory = a : (gHistory gs)}
 
-emptyCave :: WorldConfig -> GameState -> Cave
+emptyCave :: WorldConfig -> GameState -> (Cave, GameState)
 emptyCave wc gs =
-  let cs      = vertices $ maze wc
-      hazards = (trevor gs) : (bats wc) ++ (pits wc)
-   in head $ filter (not . flip elem hazards) cs
+  let cs         = vertices $ maze wc
+      hazards    = (trevor gs) : (bats wc) ++ (pits wc)
+      validCaves = filter (not . flip elem hazards) cs
+      (c, gen')  = randomR (1, length validCaves) (gen gs)
+   in (validCaves !! (c-1), gs { gen = gen' })
 
-anotherCave :: WorldConfig -> GameState -> Cave
+anotherCave :: WorldConfig -> GameState -> (Cave, GameState)
 anotherCave wc gs =
-  let cs      = vertices $ maze wc
-   in head $ filter (not . (trevor gs ==)) cs
+  let cs         = vertices $ maze wc
+      validCaves = filter (not . (trevor gs ==)) cs
+      (c, gen')  = randomR (1, length validCaves) (gen gs)
+   in (validCaves !! (c-1), gs { gen = gen' })
