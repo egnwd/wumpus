@@ -4,21 +4,26 @@ module Wumpus.Utils
   , (<!>)
   , (<:>)
   , (<++>)
+  , (<.=<<)
+  , (.=<<)
   , anyM
   , logMsg
   , logMsgs
   , logDebug
+  , isIn
   ) where
 
 import Control.Applicative
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Writer
+import Control.Lens
 import Data.Array
 import Prelude hiding (putStrLn)
-import qualified Prelude as P
+import qualified Prelude as P (putStrLn)
 
 printMapM_ :: (MonadIO m, Foldable t) => t String -> m ()
-printMapM_ = liftIO . mapM_ putStrLn
+printMapM_ = mapM_ putStrLn
 
 putStrLn :: (MonadIO m) => String -> m ()
 putStrLn = liftIO . P.putStrLn
@@ -46,3 +51,14 @@ logMsgs = tell
 
 logDebug :: Monad m => String -> WriterT [String] m ()
 logDebug = logMsg . ("[DEBUG] " ++)
+
+isIn :: (Foldable t, Eq a) => t a -> a -> Bool
+isIn = flip elem
+
+(<.=<<) :: MonadState s m => ASetter s s a b -> m b -> m b
+(<.=<<) = (=<<) . (<.=)
+{-# INLINE (<.=<<) #-}
+
+(.=<<) :: MonadState s m => ASetter s s a b -> m b -> m ()
+(.=<<) = (=<<) . (.=)
+{-# INLINE (.=<<) #-}

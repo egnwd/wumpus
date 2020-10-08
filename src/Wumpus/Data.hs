@@ -1,55 +1,79 @@
+{-# LANGUAGE TemplateHaskell, FlexibleContexts #-}
 module Wumpus.Data
   ( Cave(..)
   , Maze(..)
-  , WorldConfig(..)
   , Action(..)
   , Result(..)
-  , GameState(..)
+
+  , WorldConfig(..)
+  , maze
+  , pits
+  , bats
+  , isDebug
+  , hazards
   , initialWorld
+
+  , GameState(..)
+  , crookedArrows
+  , gCave
+  , gHistory
+  , trevor
+  , gameOver
+  , gen
   , initialState
   ) where
 
+import Control.Lens
 import Data.Graph
 import System.Random
+
+import Wumpus.Utils
 
 type Cave = Int
 type Maze = Graph
 
 data WorldConfig = W
-  { maze    :: Maze
-  , pits    :: [Cave]
-  , bats    :: [Cave]
-  , isDebug :: Bool
+  { _maze    :: Maze
+  , _pits    :: [Cave]
+  , _bats    :: [Cave]
+  , _isDebug :: Bool
   } deriving (Show)
+
+makeLenses ''WorldConfig
 
 data Action = Shoot Cave | Move Cave deriving (Show)
 data Result = Win | Lose deriving (Show)
 
 data GameState = GameState
-  { crookedArrows :: Int
-  , gCave         :: Cave
-  , gHistory      :: [Action]
-  , trevor        :: Cave
-  , gameOver      :: Maybe Result
-  , gen           :: StdGen
+  { _crookedArrows :: Int
+  , _gCave         :: Cave
+  , _gHistory      :: [Action]
+  , _trevor        :: Cave
+  , _gameOver      :: Maybe Result
+  , _gen           :: StdGen
   }
 
 instance Show GameState where
-  show gs@GameState{ gameOver = Just x } =
-    "You finished in cave " ++ show (gCave gs) ++ ".\n"
-    ++ "You have " ++ show (crookedArrows gs) ++ " arrows remaining.\n"
-    ++ "You made " ++ show (length $ gHistory gs) ++ " steps.\n"
-    ++ "Trevor, the Wumpus was in cave " ++ show (trevor gs) ++ "."
+  show gs@GameState{ _gameOver = Just _ } =
+    "You finished in cave " ++ show (_gCave gs) ++ ".\n"
+    ++ "You have " ++ show (_crookedArrows gs) ++ " arrows remaining.\n"
+    ++ "You made " ++ show (length $ _gHistory gs) ++ " steps.\n"
+    ++ "Trevor, the Wumpus was in cave " ++ show (_trevor gs) ++ "."
 
-  show gs@GameState{ gameOver = Nothing } = "NO PEEKING!"
+  show GameState{ _gameOver = Nothing } = "NO PEEKING!"
+
+makeLenses ''GameState
 
 initialWorld :: WorldConfig
 initialWorld = W
-  { maze    = initialMaze
-  , pits    = intitalPits
-  , bats    = initialBats
-  , isDebug = False
+  { _maze   = initialMaze
+  , _pits   = intitalPits
+  , _bats   = initialBats
+  , _isDebug = False
   }
+
+hazards :: Getter WorldConfig [Cave]
+hazards = runGetter $ Getter bats <++> Getter pits
 
 initialMaze :: Maze
 initialMaze = buildG (1,20)
@@ -83,10 +107,10 @@ initialBats  = [2, 17]
 
 initialState :: Int -> GameState
 initialState seed = GameState
-  { crookedArrows = 5
-  , gCave         = 1
-  , gHistory      = []
-  , trevor        = intialTrevor
-  , gameOver      = Nothing
-  , gen           = mkStdGen seed
+  { _crookedArrows = 5
+  , _gCave         = 1
+  , _gHistory      = []
+  , _trevor        = intialTrevor
+  , _gameOver      = Nothing
+  , _gen           = mkStdGen seed
   }
