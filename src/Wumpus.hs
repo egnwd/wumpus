@@ -1,5 +1,5 @@
 -- vim: fdm=marker
-{-# LANGUAGE FlexibleContexts, MultiWayIf, ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts, MultiWayIf, ConstraintKinds, LambdaCase #-}
 module Wumpus
   ( runWumpus
   , GameState(..)
@@ -11,6 +11,7 @@ module Wumpus
 -- {{{
 import Control.Applicative
 import Control.Monad.Reader
+import Control.Monad.State
 import Data.Array
 import Data.Graph
 import Data.List
@@ -18,6 +19,7 @@ import Prelude hiding (putStrLn)
 import System.Random
 import Data.Maybe.HT
 import Data.Foldable
+import Util
 
 import Wumpus.Data
 import Wumpus.Movement
@@ -26,119 +28,130 @@ import Wumpus.Utils
 -- }}}
 
 runWumpus :: MonadIO m => GameState -> WorldConfig -> m GameState
-runWumpus = runReaderT . loop
+runWumpus = runReaderT . execStateT loop
 
 data MoveEvent  = Wumpus | Bat | Pit
 data ShootEvent = Kill | OutOfAmmo
 
-type World m = MonadReader WorldConfig m
+type Game m = (MonadState GameState m, MonadReader WorldConfig m)
 
-loop :: (World m, MonadIO m) => GameState -> m GameState
-loop gs = do
+loop :: (Game m, MonadIO m) => m ()
+loop = do
 -- {{{
   m <- asks maze
-  let cave = gCave gs
-  let tunnels = sort (m ! cave)
+  cave <- gets gCave
+  let tunnels = sort (m!cave)
 
   -- Cave info
   putStrLn $ Msg.youAreInCave cave
-  sense gs >>= traverse_ putStrLn
+  sense >>= traverse_ putStrLn
   putStrLn (Msg.tunnelsLeadTo tunnels)
+  action <- getAction tunnels
 
   -- Player action
-  action <- getAction tunnels
   d <- asks isDebug
   let shouldDebug l = d || (not $ isPrefixOf "[DEBUG]" l)
-  (gs', logs) <- execute action gs
+  logs <- execute action
   traverse_ putStrLn $ filter shouldDebug logs
 
-  case gameOver gs' of
-    Nothing -> loop gs'
-    Just Win -> putStrLn Msg.win >> return gs'
-    Just Lose -> putStrLn Msg.lose >> return gs'
+  gets gameOver >>= \case
+      Nothing -> loop
+      Just Win -> putStrLn Msg.win
+      Just Lose -> putStrLn Msg.lose
 -- }}}
 
-sense :: World m => GameState -> m [String]
-sense gs = do
+sense :: (Game m) => m [String]
+sense = do
 -- {{{
-  tunnels <- (\m -> m ! gCave gs) <$> asks maze
-  batCaves <- asks bats
-  pitFalls <- asks pits
+  let tunnels = asks maze <!> gets gCave
 
-  let trevorE = if (trevor gs) `elem` tunnels then ([Msg.senseWumpus] ++) else ([] ++)
-  let batsE   = if any (flip elem batCaves) tunnels then ([Msg.senseBats] ++) else ([] ++)
-  let pitsE   = if any (flip elem pitFalls) tunnels then ([Msg.sensePits] ++) else ([] ++)
+  nearTrevor <- elem <$> gets trevor <*> tunnels
+  nearBats   <- liftA2 any (flip elem <$> asks bats) tunnels
+  nearPits   <- liftA2 any (flip elem <$> asks pits) tunnels
 
-  return $ trevorE $ batsE $ pitsE []
+  return $ filterByList [nearTrevor, nearBats, nearPits] [Msg.senseWumpus, Msg.senseBats, Msg.sensePits]
 -- }}}
 
-execute :: World m => Action -> GameState -> m (GameState, [String])
-execute a@(Move c) gs = do
-  (gs', eCave) <- emptyCave gs
-  let gs'' = gs' { gCave = c, gHistory = a : (gHistory gs) }
-      logs = ["[DEBUG] Updated cave to Cave " ++ show c, "[DEBUG] Updated history with action " ++ show a]
+execute :: (Game m) => Action -> m [String]
+execute a@(Move c) = do
+  eCave <- emptyCave
 
-  getMoveEvent a gs >>= \event -> return $
-    case event of
-      Just Wumpus -> (gs'' { gameOver = Just Lose }, Msg.encounterWumpus : logs)
-      Just Pit    -> (gs'' { gameOver = Just Lose }, Msg.losePits : logs)
-      Just Bat    -> (gs'' { gCave = eCave },        Msg.encounterBats : ("[DEBUG] Updated cave to Cave " ++ show eCave) : logs)
-      Nothing     -> (gs'', logs)
+  updateHistory a
+  let logs = ["[DEBUG] Updated cave to Cave " ++ show c]
+  modify (\s -> s { gCave = c })
+  let logs' =  ("[DEBUG] Updated history with action " ++ show a) : logs
+  getMoveEvent a >>= \case
+      Just Wumpus -> (modify $ \s -> s { gameOver = Just Lose }) >> (return $ Msg.encounterWumpus : logs')
+      Just Pit    -> (modify $ \s -> s { gameOver = Just Lose }) >> (return $ Msg.losePits : logs')
+      Just Bat    -> (modify $ \s -> s { gCave = eCave }) >> (return $ Msg.encounterBats : ("[DEBUG] Updated history with action " ++ show eCave) : logs')
+      Nothing     -> return logs'
 
-execute a@(Shoot c) gs = do
+execute a@(Shoot c) = do
 -- {{{
-  let remainingArrows = (crookedArrows gs) - 1
-      gs' = gs { crookedArrows = remainingArrows, gHistory = a : (gHistory gs)}
-      logs = ["[DEBUG] Updated history with action " ++ show a]
+  remainingArrows <- gets (pred . crookedArrows)
+  updateHistory a
+  let logs = ["[DEBUG] Updated history with action " ++ show a]
+  modify (\s -> s { crookedArrows = remainingArrows })
 
-  let event = getShootEvent a gs'
-  case event of
-    Just Kill      -> return (gs' {gameOver = Just Win},  Msg.winWumpus : logs)
-    Just OutOfAmmo -> return (gs' {gameOver = Just Lose}, [Msg.missed, Msg.loseArrows] ++ logs)
+  getShootEvent a >>= \case
+    Just Kill      -> (modify $ \s -> s {gameOver = Just Win})  >> (return $ Msg.winWumpus : logs)
+    Just OutOfAmmo -> (modify $ \s -> s {gameOver = Just Lose}) >> (return $ [Msg.missed, Msg.loseArrows] ++ logs)
     Nothing -> do
-      (gs'', trevor') <- anotherCave gs'
-      let gs''' = gs'' { trevor = trevor' }
+      trevor' <- anotherCave
       if trevor' == c
-      then return (gs''' {gameOver = Just Lose}, Msg.loseWumpus : logs)
-      else return (gs''', Msg.missed : logs)
+      then (modify $ \s -> s { gameOver = Just Lose }) >> (return $ Msg.loseWumpus : logs)
+      else return $ Msg.missed : logs
 -- }}}
 
-emptyCave :: World m => GameState -> m (GameState, Cave)
-emptyCave gs = do
+updateHistory a = do
 -- {{{
-  hazards <- (trevor gs :) <$> asks (\r -> bats r ++ pits r)
-  cs <- vertices <$> asks maze
-
-  let validCaves = filter (not . flip elem hazards) cs
-      (c, gen')  = randomR (1, length validCaves) (gen gs)
-
-  return (gs { gen = gen' }, validCaves !! (c-1))
+  history <- gets ((a :) . gHistory)
+  modify (\s -> s { gHistory = history })
 -- }}}
 
-anotherCave :: World m => GameState -> m (GameState, Cave)
-anotherCave gs = do
+emptyCave :: (Game m) => m Cave
+emptyCave = do
 -- {{{
-  cs <- vertices <$> asks maze
-  let validCaves = filter (not . (trevor gs ==)) cs
-      (c, gen')  = randomR (1, length validCaves) (gen gs)
+  hazards <- gets trevor <:> asks (bats <++> pits)
+  cs <- filter (not . flip elem hazards) . vertices <$> asks maze
 
-  return (gs { gen = gen' }, validCaves !! (c-1))
+  rand <- gets gen
+  let (c, gen')  = randomR (1, length cs) rand
+  modify (\s -> s {gen = gen'})
+
+  return $ cs !! (c-1)
 -- }}}
 
-getMoveEvent :: World m => Action -> GameState -> m (Maybe MoveEvent)
-getMoveEvent (Move c) gs = do
+anotherCave :: (Game m) => m Cave
+anotherCave = do
+-- {{{
+  trev <- gets trevor
+  cs <- filter (not . (trev ==)) . vertices <$> asks maze
+
+  rand <- gets gen
+  let (c, gen')  = randomR (1, length cs) rand
+  modify (\s -> s {gen = gen'})
+
+  return $ cs !! (c-1)
+-- }}}
+
+getMoveEvent :: Game m => Action -> m (Maybe MoveEvent)
+getMoveEvent (Move c) = do
 -- {{{
   pitFalls <- asks pits
   batCaves <- asks bats
+  trev <- gets trevor
   return $
-    toMaybe ((trevor gs) == c) Wumpus
+    toMaybe (trev == c) Wumpus
     <|> toMaybe (c `elem` pitFalls) Pit
     <|> toMaybe (c `elem` batCaves) Bat
 -- }}}
 
-getShootEvent :: Action -> GameState -> Maybe ShootEvent
-getShootEvent (Shoot c) gs = do
+getShootEvent :: Game m => Action -> m (Maybe ShootEvent)
+getShootEvent (Shoot c) = do
 -- {{{
-  toMaybe ((trevor gs) == c) Kill
-  <|> toMaybe (0 == (crookedArrows gs)) OutOfAmmo
+  gs <- get
+  return $
+    toMaybe ((trevor gs) == c) Kill
+    <|> toMaybe (0 == (crookedArrows gs)) OutOfAmmo
 -- }}}
