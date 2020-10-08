@@ -10,21 +10,22 @@ module Wumpus
 
 -- {{{
 import Control.Applicative
+import Control.Bool
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Writer
 import Data.Array
+import Data.Foldable
 import Data.Graph
 import Data.List
+import Data.Maybe.HT
 import Prelude hiding (putStrLn)
 import System.Random
-import Data.Maybe.HT
-import Data.Foldable
-import Util
 
 import Wumpus.Data
 import Wumpus.Movement
-import qualified Wumpus.Messages as Msg
 import Wumpus.Utils
+import qualified Wumpus.Messages as Msg
 -- }}}
 
 runWumpus :: MonadIO m => GameState -> WorldConfig -> m GameState
@@ -34,6 +35,7 @@ data MoveEvent  = Wumpus | Bat | Pit
 data ShootEvent = Kill | OutOfAmmo
 
 type Game m = (MonadState GameState m, MonadReader WorldConfig m)
+type Logging = WriterT [String]
 
 loop :: (Game m, MonadIO m) => m ()
 loop = do
@@ -44,15 +46,15 @@ loop = do
 
   -- Cave info
   putStrLn $ Msg.youAreInCave cave
-  sense >>= traverse_ putStrLn
+  execWriterT sense >>= traverse_ putStrLn
   putStrLn (Msg.tunnelsLeadTo tunnels)
   action <- getAction tunnels
 
   -- Player action
   d <- asks isDebug
   let shouldDebug l = d || (not $ isPrefixOf "[DEBUG]" l)
-  logs <- execute action
-  traverse_ putStrLn $ filter shouldDebug logs
+  logs <- execWriterT $ censor (filter shouldDebug) (execute action)
+  traverse_ putStrLn logs
 
   gets gameOver >>= \case
       Nothing -> loop
@@ -60,47 +62,46 @@ loop = do
       Just Lose -> putStrLn Msg.lose
 -- }}}
 
-sense :: (Game m) => m [String]
+sense :: (Game m) => Logging m ()
 sense = do
 -- {{{
   let tunnels = asks maze <!> gets gCave
-
-  nearTrevor <- elem <$> gets trevor <*> tunnels
-  nearBats   <- liftA2 any (flip elem <$> asks bats) tunnels
-  nearPits   <- liftA2 any (flip elem <$> asks pits) tunnels
-
-  return $ filterByList [nearTrevor, nearBats, nearPits] [Msg.senseWumpus, Msg.senseBats, Msg.sensePits]
+  whenM (elem <$> gets trevor <*> tunnels)       $ logMsg Msg.senseWumpus
+  whenM (anyM (flip elem <$> asks bats) tunnels) $ logMsg Msg.senseBats
+  whenM (anyM (flip elem <$> asks pits) tunnels) $ logMsg Msg.sensePits
 -- }}}
 
-execute :: (Game m) => Action -> m [String]
+execute :: (Game m) => Action -> Logging m ()
+
 execute a@(Move c) = do
   eCave <- emptyCave
 
-  updateHistory a
-  let logs = ["[DEBUG] Updated cave to Cave " ++ show c]
-  modify (\s -> s { gCave = c })
-  let logs' =  ("[DEBUG] Updated history with action " ++ show a) : logs
+  updateHistory a >> (logDebug $ "Updated cave to Cave " ++ show c)
+  modify (\s -> s { gCave = c }) >> (logDebug $ "Updated history with action " ++ show a)
+
   getMoveEvent a >>= \case
-      Just Wumpus -> (modify $ \s -> s { gameOver = Just Lose }) >> (return $ Msg.encounterWumpus : logs')
-      Just Pit    -> (modify $ \s -> s { gameOver = Just Lose }) >> (return $ Msg.losePits : logs')
-      Just Bat    -> (modify $ \s -> s { gCave = eCave }) >> (return $ Msg.encounterBats : ("[DEBUG] Updated history with action " ++ show eCave) : logs')
-      Nothing     -> return logs'
+      Just Wumpus -> (modify $ \s -> s { gameOver = Just Lose }) >> logMsg Msg.encounterWumpus
+      Just Pit    -> (modify $ \s -> s { gameOver = Just Lose }) >> logMsg Msg.losePits
+      Just Bat    -> do
+        modify $ \s -> s { gCave = eCave }
+        logDebug $ "Updated history with action " ++ show a
+        logMsg Msg.encounterBats
+      Nothing     -> return ()
 
 execute a@(Shoot c) = do
 -- {{{
   remainingArrows <- gets (pred . crookedArrows)
-  updateHistory a
-  let logs = ["[DEBUG] Updated history with action " ++ show a]
+  updateHistory a >> (logDebug $ "Updated history with action " ++ show a)
   modify (\s -> s { crookedArrows = remainingArrows })
 
   getShootEvent a >>= \case
-    Just Kill      -> (modify $ \s -> s {gameOver = Just Win})  >> (return $ Msg.winWumpus : logs)
-    Just OutOfAmmo -> (modify $ \s -> s {gameOver = Just Lose}) >> (return $ [Msg.missed, Msg.loseArrows] ++ logs)
+    Just Kill      -> (modify $ \s -> s {gameOver = Just Win})  >> logMsg Msg.winWumpus
+    Just OutOfAmmo -> (modify $ \s -> s {gameOver = Just Lose}) >> logMsgs [Msg.missed, Msg.loseArrows]
     Nothing -> do
       trevor' <- anotherCave
       if trevor' == c
-      then (modify $ \s -> s { gameOver = Just Lose }) >> (return $ Msg.loseWumpus : logs)
-      else return $ Msg.missed : logs
+      then (modify $ \s -> s { gameOver = Just Lose }) >> logMsg Msg.loseWumpus
+      else logMsg Msg.missed
 -- }}}
 
 updateHistory a = do

@@ -29,6 +29,7 @@ library
     array >= 0.5.4,
     base >= 4.8 && < 5,
     composition-extra >= 2.0,
+    control-bool >= 0.2,
     containers >= 0.6.2,
     ghc >= 8.8.4,
     mtl >= 2.2.2,
