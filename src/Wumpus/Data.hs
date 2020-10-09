@@ -31,7 +31,16 @@ data GameState = GameState
   , trevor        :: Cave
   , gameOver      :: Maybe Result
   , gen           :: StdGen
-  } deriving (Show)
+  }
+
+instance Show GameState where
+  show gs@GameState{ gameOver = Just x } =
+    "You finished in cave " ++ show (gCave gs) ++ ".\n"
+    ++ "You have " ++ show (crookedArrows gs) ++ " arrows remaining.\n"
+    ++ "You made " ++ show (length $ gHistory gs) ++ " steps.\n"
+    ++ "Trevor, the Wumpus was in cave " ++ show (trevor gs) ++ "."
+
+  show gs@GameState{ gameOver = Nothing } = "NO PEEKING!"
 
 initialWorld :: WorldConfig
 initialWorld = W
