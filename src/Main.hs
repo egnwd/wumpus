@@ -19,10 +19,6 @@ main = do
   gs <- loop initialWorld (initialState seed)
   print gs
 
-
-printM_ :: (MonadIO m, Foldable t) => t String -> m ()
-printM_ = liftIO . mapM_ putStrLn
-
 loop :: WorldConfig -> GameState -> IO GameState
 loop wc gs = do
   let m = maze wc
@@ -61,7 +57,7 @@ execute wc gs a@(Move c)
   | (trevor gs) == c   = ([Msg.encounterWumpus], gs'' { gameOver = Just Lose })
   | c `elem` (pits wc) = ([Msg.losePits], gs'' { gameOver = Just Lose })
   | c `elem` (bats wc) = ([Msg.encounterBats], gs'' { gCave = eCave })
-  | otherwise          = ([], gs')
+  | otherwise          = ([], gs'')
   where
     (eCave, gs')       = emptyCave wc gs
     gs'' = gs' { gCave = c, gHistory = a : (gHistory gs) }
