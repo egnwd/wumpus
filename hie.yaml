@@ -1,0 +1,14 @@
+cradle:
+  multi:
+    - path: "./docs"
+      config: { cradle: { none:  } }
+
+    - path: "./"
+      config:
+        cradle:
+          stack:
+            - path: "./exe/Main.hs"
+              component: "wumpus:exe:wumpus"
+
+            - path: "./src"
+              component: "wumpus:lib"
