@@ -15,9 +15,12 @@ extra-source-files:  README.md
 
 library
   exposed-modules:
-    Messages
-    Movement
-    Data
+    Wumpus
+
+  other-modules:
+    Wumpus.Data
+    Wumpus.Messages
+    Wumpus.Movement
 
   hs-source-dirs:   src
   default-language: Haskell2010
@@ -27,7 +30,6 @@ library
     array >= 0.5.4,
     mtl >= 2.2.2,
     composition-extra >= 2.0,
-    time >= 1.1,
     random >= 1.1
 
 executable wumpus
@@ -36,10 +38,5 @@ executable wumpus
   default-language:    Haskell2010
   build-depends:
     base >= 4.8 && < 5,
-    containers >= 0.6.2,
-    array >= 0.5.4,
-    mtl >= 2.2.2,
-    composition-extra >= 2.0,
     time >= 1.1,
-    random >= 1.1,
     wumpus

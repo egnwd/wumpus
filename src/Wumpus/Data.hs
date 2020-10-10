@@ -1,4 +1,4 @@
-module Data
+module Wumpus.Data
   ( Cave(..)
   , Maze(..)
   , WorldConfig(..)

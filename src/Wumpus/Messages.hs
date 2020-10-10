@@ -1,4 +1,4 @@
-module Messages
+module Wumpus.Messages
   ( youAreInCave
   , tunnelsLeadTo
   , moveOrShoot

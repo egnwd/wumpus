@@ -1,4 +1,4 @@
-module Movement
+module Wumpus.Movement
   ( getAction
   ) where
 
@@ -6,8 +6,8 @@ import Data.Char
 import Data.Functor.Syntax
 import Text.Read (readMaybe)
 
-import qualified Messages as Msg
-import Data
+import Wumpus.Data
+import qualified Wumpus.Messages as Msg
 
 getAction :: [Cave] -> IO Action
 getAction ts = getCommand <*> getCave ts
