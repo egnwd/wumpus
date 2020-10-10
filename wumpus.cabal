@@ -30,7 +30,8 @@ library
     array >= 0.5.4,
     mtl >= 2.2.2,
     composition-extra >= 2.0,
-    random >= 1.1
+    random >= 1.1,
+    utility-ht
 
 executable wumpus
   hs-source-dirs:      exe

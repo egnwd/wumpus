@@ -6,10 +6,13 @@ module Wumpus
   ) where
 
 --{{{
+import Control.Applicative
 import Data.Array
 import Data.Graph
 import Data.List
 import System.Random
+import Data.Maybe.HT
+
 
 import Wumpus.Data
 import Wumpus.Movement
@@ -17,6 +20,9 @@ import qualified Wumpus.Messages as Msg
 -- }}}
 
 runWumpus = loop
+
+data MoveEvent  = Wumpus | Bat | Pit
+data ShootEvent = Kill | OutOfAmmo
 
 loop :: WorldConfig -> GameState -> IO GameState
 loop wc gs = do
@@ -53,25 +59,29 @@ sense wc gs = trevorE $ batsE $ pitsE []
 
 -- | Execute the Player's Action
 execute :: WorldConfig -> GameState -> Action -> ([String], GameState)
-execute wc gs a@(Move c)
-  | (trevor gs) == c = ([Msg.encounterWumpus], gs'' {gameOver = Just Lose})
-  | c `elem` (pits wc) = ([Msg.losePits], gs'' {gameOver = Just Lose})
-  | c `elem` (bats wc) = ([Msg.encounterBats], gs'' {gCave = eCave})
-  | otherwise = ([], gs'')
-  where
-    (eCave, gs') = emptyCave wc gs
-    gs'' = gs' {gCave = c, gHistory = a : (gHistory gs)}
+execute wc gs a@(Move c) =
+  let event = getMoveEvent wc gs a
+      (eCave, gs') = emptyCave wc gs
+      gs'' = gs' {gCave = c, gHistory = a : (gHistory gs)}
+   in case event of
+        Just Wumpus -> ([Msg.encounterWumpus], gs'' {gameOver = Just Lose})
+        Just Pit    -> ([Msg.losePits], gs'' {gameOver = Just Lose})
+        Just Bat    -> ([Msg.encounterBats], gs'' {gCave = eCave})
+        Nothing     -> ([], gs'')
 
-execute wc gs a@(Shoot c)
+execute wc gs a@(Shoot c) =
 --{{{
-  | (trevor gs) == c = ([Msg.winWumpus], gs'' {gameOver = Just Win})
-  | remainingArrows == 0 = ([Msg.missed, Msg.loseArrows], gs'' {gameOver = Just Lose})
-  | newTrevor == c = ([Msg.loseWumpus], gs'' {trevor = newTrevor, gameOver = Just Lose})
-  | otherwise = ([Msg.missed], gs'' {trevor = newTrevor})
-  where
-    remainingArrows = (crookedArrows gs) - 1
-    (newTrevor, gs') = anotherCave wc gs
-    gs'' = gs' {crookedArrows = remainingArrows, gHistory = a : (gHistory gs)}
+  let remainingArrows = (crookedArrows gs) - 1
+      gs' = gs { crookedArrows = remainingArrows }
+      event = getShootEvent gs' a
+      gs'' = gs' { gHistory = a : (gHistory gs) }
+   in case event of
+        Just Kill      -> ([Msg.winWumpus], gs'' {gameOver = Just Win})
+        Just OutOfAmmo -> ([Msg.missed, Msg.loseArrows], gs'' {gameOver = Just Lose})
+        Nothing -> let (newTrevor, gs''') = anotherCave wc gs''
+                    in if newTrevor == c
+                       then ([Msg.loseWumpus], gs''' {trevor = newTrevor, gameOver = Just Lose})
+                       else ([Msg.missed], gs''' {trevor = newTrevor})
 -- }}}
 
 -- | Helper Functions
@@ -94,3 +104,13 @@ anotherCave wc gs =
    in (validCaves !! (c -1), gs {gen = gen'})
 -- }}}
 
+getMoveEvent :: WorldConfig -> GameState -> Action -> Maybe MoveEvent
+getMoveEvent wc gs (Move c) = do
+  toMaybe ((trevor gs) == c) Wumpus
+  <|> toMaybe (c `elem` (pits wc)) Pit
+  <|> toMaybe (c `elem` (bats wc)) Bat
+
+getShootEvent :: GameState -> Action -> Maybe ShootEvent
+getShootEvent gs (Shoot c) = do
+  toMaybe ((trevor gs) == c) Kill
+  <|> toMaybe (0 == (crookedArrows gs)) OutOfAmmo
