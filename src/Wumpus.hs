@@ -17,7 +17,6 @@ module Wumpus
   , gHistory
   , trevor
   , gameOver
-  , gen
   , initialState
   ) where
 
@@ -26,6 +25,7 @@ import Control.Applicative
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Random.Class
 import Control.Lens
 import Control.Conditional
 import Data.Foldable
@@ -33,7 +33,6 @@ import Data.Graph
 import Data.List
 import Data.Maybe.HT
 import Prelude hiding (putStrLn)
-import System.Random
 
 import Wumpus.Data
 import Wumpus.Movement
@@ -41,13 +40,13 @@ import Wumpus.Utils
 import qualified Wumpus.Messages as Msg
 -- }}}
 
-runWumpus :: MonadIO m => GameState -> WorldConfig -> m GameState
+runWumpus :: (MonadIO m, MonadRandom m) => GameState -> WorldConfig -> m GameState
 runWumpus = runReaderT . execStateT loop
 
 data MoveEvent  = Wumpus | Bat | Pit
 data ShootEvent = Kill | OutOfAmmo
 
-type Game m = (MonadState GameState m, MonadReader WorldConfig m)
+type Game m = (MonadState GameState m, MonadReader WorldConfig m, MonadRandom m)
 type Logging = WriterT [String]
 
 loop :: (Game m, MonadIO m) => m ()
@@ -102,7 +101,7 @@ execute a@(Shoot c) = do
   updateHistory a >> (logDebug $ "Updated cave to Cave " ++ show c)
   crookedArrows -= 1
   getShootEvent c >>= \case
-    Just Kill      -> (gameOver ?= Win) >> logMsg  Msg.winWumpus
+    Just Kill      -> (gameOver ?= Win)  >> logMsg  Msg.winWumpus
     Just OutOfAmmo -> (gameOver ?= Lose) >> logMsgs [Msg.missed, Msg.loseArrows]
     Nothing -> do
       trevor' <- trevor <.=<< anotherCave
@@ -120,7 +119,6 @@ emptyCave = do
 -- {{{
   hs <- use trevor <:> view hazards
   cs <- filter (not . isIn hs) . vertices <$> view maze
-
   randomCave cs
 -- }}}
 
@@ -133,33 +131,31 @@ anotherCave = do
   randomCave cs
 -- }}}
 
-randomCave :: MonadState GameState m => [Cave] -> m Cave
+randomCave :: (MonadRandom m) => [Cave] -> m Cave
 randomCave cs = do
 -- {{{
-  rand <- use gen
-  let (c, gen') = randomR (1, length cs) rand
-  gen .= gen'
+  c <- getRandomR (1, length cs)
   return $ cs !! (c-1)
 -- }}}
 
-getMoveEvent :: Game m => Cave -> m (Maybe MoveEvent)
+getMoveEvent :: (Game m) => Cave -> m (Maybe MoveEvent)
 getMoveEvent c = do
 -- {{{
-  pitFalls <- view pits
-  batCaves <- view bats
-  trev <- use trevor
-  return $
-    toMaybe (trev == c) Wumpus
-    <|> toMaybe (c `elem` pitFalls) Pit
-    <|> toMaybe (c `elem` batCaves) Bat
+  isTrevorHere <- (c ==) <$> use trevor
+  areBatsHere  <- (c `elem`) <$> view bats
+  arePitsHere  <- (c `elem`) <$> view pits
+
+  return $ (toMaybe isTrevorHere Wumpus)
+    <|> (toMaybe areBatsHere Bat)
+    <|> (toMaybe arePitsHere Pit)
 -- }}}
 
-getShootEvent :: Game m => Cave -> m (Maybe ShootEvent)
+getShootEvent :: (Game m) => Cave -> m (Maybe ShootEvent)
 getShootEvent c = do
 -- {{{
-  gs <- get
-  return $
-    toMaybe (gs^.trevor == c) Kill
-    <|> toMaybe (0 == gs^.crookedArrows) OutOfAmmo
+  isTrevorHere <- (c ==) <$> use trevor
+  isOutOfAmmo  <- (0 ==) <$> use crookedArrows
+
+  return $ toMaybe isTrevorHere Kill <|> toMaybe isOutOfAmmo OutOfAmmo
 -- }}}
 

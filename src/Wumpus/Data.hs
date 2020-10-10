@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell, FlexibleContexts #-}
 module Wumpus.Data
-  ( Cave(..)
-  , Maze(..)
+  ( Cave
+  , Maze
   , Action(..)
   , Result(..)
 
@@ -19,13 +19,11 @@ module Wumpus.Data
   , gHistory
   , trevor
   , gameOver
-  , gen
   , initialState
   ) where
 
 import Control.Lens
 import Data.Graph
-import System.Random
 
 import Wumpus.Utils
 
@@ -50,7 +48,6 @@ data GameState = GameState
   , _gHistory      :: [Action]
   , _trevor        :: Cave
   , _gameOver      :: Maybe Result
-  , _gen           :: StdGen
   }
 
 instance Show GameState where
@@ -105,12 +102,10 @@ intialTrevor = 20
 intitalPits  = [12, 8]
 initialBats  = [2, 17]
 
-initialState :: Int -> GameState
-initialState seed = GameState
+initialState = GameState
   { _crookedArrows = 5
   , _gCave         = 1
   , _gHistory      = []
   , _trevor        = intialTrevor
   , _gameOver      = Nothing
-  , _gen           = mkStdGen seed
   }

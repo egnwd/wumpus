@@ -23,6 +23,8 @@ library
     Wumpus.Movement
     Wumpus.Utils
 
+  ghc-options: -Wall -Wno-missing-signatures -Wredundant-constraints
+
   hs-source-dirs:   src
   default-language: Haskell2010
   build-depends:
@@ -34,9 +36,9 @@ library
     containers >= 0.6.2,
     ghc >= 8.8.4,
     lens >= 4.19.2,
+    MonadRandom >= 0.5.2,
     mtl >= 2.2.2,
-    random >= 1.1,
-    utility-ht
+    utility-ht >= 0.0.15
 
 executable wumpus
   hs-source-dirs:      exe
@@ -44,5 +46,4 @@ executable wumpus
   default-language:    Haskell2010
   build-depends:
     base >= 4.8 && < 5,
-    time >= 1.1,
     wumpus
