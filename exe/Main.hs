@@ -8,6 +8,6 @@ main :: IO ()
 main = do
   putStrLn "Welcome to \"Hunt the Wumpus\"!!"
   seed <- (round . (* 1000)) <$> getPOSIXTime
-  gs <- runWumpus initialWorld (initialState seed)
+  gs <- runWumpus (initialState seed) initialWorld
   print gs
 

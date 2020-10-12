@@ -24,8 +24,8 @@ runWumpus = loop
 data MoveEvent  = Wumpus | Bat | Pit
 data ShootEvent = Kill | OutOfAmmo
 
-loop :: WorldConfig -> GameState -> IO GameState
-loop wc gs = do
+loop :: GameState -> WorldConfig -> IO GameState
+loop gs wc = do
 --{{{
   let m = maze wc
   let cave = gCave gs
@@ -33,22 +33,22 @@ loop wc gs = do
 
   -- Cave info
   putStrLn $ Msg.youAreInCave cave
-  mapM_ putStrLn $ sense wc gs
+  mapM_ putStrLn $ sense gs wc
   putStrLn $ Msg.tunnelsLeadTo tunnels
 
   -- Player action
   action <- getAction tunnels
-  let (logs, gs') = execute wc gs action
+  let (gs', logs) = execute action gs wc
   mapM_ putStrLn logs
 
   case gameOver gs' of
-    Nothing -> loop wc gs'
+    Nothing -> loop gs' wc
     Just Win -> putStrLn Msg.win >> return gs'
     Just Lose -> putStrLn Msg.lose >> return gs'
 -- }}}
 
-sense :: WorldConfig -> GameState -> [String]
-sense wc gs = trevorE $ batsE $ pitsE []
+sense :: GameState -> WorldConfig -> [String]
+sense gs wc = trevorE $ batsE $ pitsE []
   where
 --{{{
     tunnels = (maze wc ! gCave gs)
@@ -58,59 +58,59 @@ sense wc gs = trevorE $ batsE $ pitsE []
 -- }}}
 
 -- | Execute the Player's Action
-execute :: WorldConfig -> GameState -> Action -> ([String], GameState)
-execute wc gs a@(Move c) =
-  let event = getMoveEvent wc gs a
-      (eCave, gs') = emptyCave wc gs
+execute :: Action -> GameState -> WorldConfig -> (GameState, [String])
+execute a@(Move c) gs wc =
+  let event = getMoveEvent a gs wc
+      (gs', eCave) = emptyCave gs wc
       gs'' = gs' {gCave = c, gHistory = a : (gHistory gs)}
    in case event of
-        Just Wumpus -> ([Msg.encounterWumpus], gs'' {gameOver = Just Lose})
-        Just Pit    -> ([Msg.losePits], gs'' {gameOver = Just Lose})
-        Just Bat    -> ([Msg.encounterBats], gs'' {gCave = eCave})
-        Nothing     -> ([], gs'')
+        Just Wumpus -> (gs'' {gameOver = Just Lose}, [Msg.encounterWumpus])
+        Just Pit    -> (gs'' {gameOver = Just Lose}, [Msg.losePits])
+        Just Bat    -> (gs'' {gCave = eCave}, [Msg.encounterBats])
+        Nothing     -> (gs'', [])
 
-execute wc gs a@(Shoot c) =
+execute a@(Shoot c) gs wc =
 --{{{
   let remainingArrows = (crookedArrows gs) - 1
       gs' = gs { crookedArrows = remainingArrows }
-      event = getShootEvent gs' a
+      event = getShootEvent a gs'
       gs'' = gs' { gHistory = a : (gHistory gs) }
    in case event of
-        Just Kill      -> ([Msg.winWumpus], gs'' {gameOver = Just Win})
-        Just OutOfAmmo -> ([Msg.missed, Msg.loseArrows], gs'' {gameOver = Just Lose})
-        Nothing -> let (newTrevor, gs''') = anotherCave wc gs''
-                    in if newTrevor == c
-                       then ([Msg.loseWumpus], gs''' {trevor = newTrevor, gameOver = Just Lose})
-                       else ([Msg.missed], gs''' {trevor = newTrevor})
+        Just Kill      -> (gs'' {gameOver = Just Win}, [Msg.winWumpus])
+        Just OutOfAmmo -> (gs'' {gameOver = Just Lose}, [Msg.missed, Msg.loseArrows])
+        Nothing -> let (gs''', trevor') = anotherCave gs'' wc
+                    in if trevor' == c
+                       then (gs''' {trevor = trevor', gameOver = Just Lose}, [Msg.loseWumpus])
+                       else (gs''' {trevor = trevor'}, [Msg.missed])
 -- }}}
 
 -- | Helper Functions
-emptyCave :: WorldConfig -> GameState -> (Cave, GameState)
-emptyCave wc gs =
+emptyCave :: GameState -> WorldConfig -> (GameState, Cave)
+emptyCave gs wc =
 --{{{
   let cs = vertices $ maze wc
       hazards = (trevor gs) : (bats wc) ++ (pits wc)
       validCaves = filter (not . flip elem hazards) cs
       (c, gen') = randomR (1, length validCaves) (gen gs)
-   in (validCaves !! (c -1), gs {gen = gen'})
+   in (gs {gen = gen'}, validCaves !! (c -1))
 -- }}}
 
-anotherCave :: WorldConfig -> GameState -> (Cave, GameState)
-anotherCave wc gs =
+anotherCave :: GameState -> WorldConfig -> (GameState, Cave)
+anotherCave gs wc =
 --{{{
   let cs = vertices $ maze wc
       validCaves = filter (not . (trevor gs ==)) cs
       (c, gen') = randomR (1, length validCaves) (gen gs)
-   in (validCaves !! (c -1), gs {gen = gen'})
+   in ( gs {gen = gen'}, validCaves !! (c -1))
 -- }}}
 
-getMoveEvent :: WorldConfig -> GameState -> Action -> Maybe MoveEvent
-getMoveEvent wc gs (Move c) = do
+getMoveEvent :: Action -> GameState -> WorldConfig -> Maybe MoveEvent
+getMoveEvent (Move c) gs wc = do
   toMaybe ((trevor gs) == c) Wumpus
   <|> toMaybe (c `elem` (pits wc)) Pit
   <|> toMaybe (c `elem` (bats wc)) Bat
 
-getShootEvent :: GameState -> Action -> Maybe ShootEvent
-getShootEvent gs (Shoot c) = do
+getShootEvent :: Action -> GameState -> Maybe ShootEvent
+getShootEvent (Shoot c) gs = do
   toMaybe ((trevor gs) == c) Kill
   <|> toMaybe (0 == (crookedArrows gs)) OutOfAmmo
