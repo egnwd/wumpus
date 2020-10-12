@@ -18,6 +18,11 @@ module Wumpus
   , trevor
   , gameOver
   , initialState
+
+  , Cave
+  , Maze
+  , Action(..)
+  , Result(..)
   ) where
 
 -- {{{
