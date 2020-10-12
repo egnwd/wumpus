@@ -1,0 +1,5 @@
+runWumpus :: MonadIO m => |\mylib{GameState}| -> WorldConfig -> m (|\mylib{GameState}, \mylibo{()}|)
+loop :: (World m, MonadIO m) => |\mylib{GameState}| -> m (|\mylib{GameState}, \mylibo{()}|)
+execute :: World m => Action -> |\mylib{GameState}| -> m (|\mylib{GameState}, \mylibo{[String]}|)
+emptyCave :: World m => |\mylib{GameState}| -> m (|\mylib{GameState}, \mylibo{Cave}|)
+anotherCave :: World m => |\mylib{GameState}| -> m (|\mylib{GameState}, \mylibo{Cave}|)

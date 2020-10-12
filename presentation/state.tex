@@ -1,13 +1,60 @@
 \section{State}
-\subsection{First Principals}
-\begin{frame}
-
+\subsection{Motivation}
+\begin{frame}[fragile]{State Monad}{Motivation}
+  \begin{columns}[t]
+    \begin{column}{.55\textwidth}
+      {\tiny\inputminted[escapeinside=\\`\\`,breaklines,breakafter=>]{haskell}{state-motivation.hs}}
+    \end{column}
+    \begin{column}{.4\textwidth}
+      \begin{itemize}
+        \item Notice how we must pass this \texttt{\mylib{gs*}} around
+        \item Again, we must pass it through functions that may never use it
+        \item And this time we get back a new version which we must remember to use so we do not lose state
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 \subsection{Definition}
-\begin{frame}
-
+\begin{frame}[fragile]{State Monad}{Type}
+    {\scriptsize\inputminted[escapeinside=||]{haskell}{state-types.hs}}
+    \begin{block}{\textbf{Exercise: }Reader Type Definition}
+      \begin{align*}
+        \mathsf{newtype}\ \StateH{a} &=
+          \mathsf{State} \left\{ \fn{runState} ::\ \uncover<2->{\mylib{s}\ \rightarrow\ (\mylib{s}, \mylibo{a})} \right\}\\
+      \end{align*}
+    \end{block}
+\end{frame}
+\begin{frame}[fragile]{State Monad}{Type}
+    Recall: $\mathsf{newtype}\ \State{a} = \mathsf{State} \left\{ \fn{runState} ::\ s\ \rightarrow\ (s, a) \right\}$
+    \begin{block}{\textbf{Exercise: }State Type Definition}
+      \begin{align*}
+        \return &:: a\ \rightarrow\ \State{a}\\
+        \return\ a\ &= \uncover<2->{\mathsf{State}\ (\lambda\,s\ \rightarrow\ (s, a))}\\[1.5em]
+        (\bind) &:: \State{a}\ \rightarrow\ (a\ \rightarrow\ \State{b})\ \rightarrow\ \State{b}\\
+        x\ \bind\ fn &=\uncover<3->{\mathsf{State}\ (\lambda\,s\ \rightarrow\ 
+          \begin{aligned}[t]
+            \mathbf{let}&\ (s\,', a) = \fn{runState}\ x\ s\\
+            \mathbf{in}&\ \fn{runState}\ (fn\ a)\ s\,')
+          \end{aligned}}\\
+      \end{align*}
+    \end{block}
+\end{frame}
+\begin{frame}[fragile]{State Monad}{Functions}
+    \begin{block}{\textbf{Homework: }State Functions}
+      \begin{align*}
+        \fn{get} &:: \State{s}\\
+        \fn{gets} &:: (s\ \rightarrow\ a)\ \rightarrow\ \State{a}\\
+        \fn{put} &:: s\ \rightarrow\ \State{\unit}\\
+        \fn{modify} &:: (s\ \rightarrow\ s)\ \rightarrow\ \State{\unit}\\
+      \end{align*}
+    \end{block}
 \end{frame}
 \subsection{Example}
 \begin{frame}
-
+  \centering
+  \begin{tcolorbox}[enhanced, size=minimal,auto outer arc,
+    width=2.8cm,octogon arc, colback=red,colframe=white,colupper=white, fontupper=\fontsize{7mm}{7mm}\selectfont\bfseries\sffamily, halign=center,valign=center,
+    square,arc is angular, borderline={1mm}{-3mm}{red} ]
+    CODE
+  \end{tcolorbox}
 \end{frame}

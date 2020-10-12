@@ -1,13 +1,71 @@
 \section{Reader}
-\subsection{First Principals}
-\begin{frame}
-  
+\subsection{Motivation}
+\begin{frame}[fragile]{Reader Monad}{Motivation}
+  \begin{columns}[t]
+    \begin{column}{.4\textwidth}
+      {\tiny\inputminted[escapeinside=\\`\\`]{haskell}{reader-motivation.hs}}
+    \end{column}
+    \begin{column}{.4\textwidth}
+      \begin{itemize}
+        \item Notice how we must pass this \texttt{\mylib{wc}} around
+        \item We must pass it through functions that may never use it
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 \subsection{Definition}
-\begin{frame}
-  
+\begin{frame}[fragile]{Reader Monad}{Type}
+  \inputminted[escapeinside=||,fontsize=\tiny]{haskell}{reader-types.hs}
+  {
+    \vspace*{-4cm}
+    \hspace{7cm}
+    \begin{minipage}{.35\textwidth}
+      \begin{tcolorbox}[colframe=gray,colback=white,boxrule=1pt,arc=3.4pt,boxsep=0mm]
+        \begin{minted}{csharp}
+          class Reader<TC, TA> {
+            Reader(T runReader) {
+              this.runReader = runReader;
+            }
+          }
+        \end{minted}
+      \end{tcolorbox}
+    \end{minipage}%
+  }
+  \vspace*{2.5cm}
+  \begin{block}{\textbf{Exercise: }Reader Type Definition}
+    \begin{align*}
+      \mathsf{newtype}\ \ReaderH{a} &=
+        \mathsf{Reader} \left\{ \fn{runReader} ::\ \uncover<2->{\mylib{c}\ \rightarrow\ \mylibo{a}} \right\}\\
+    \end{align*}
+  \end{block}
+\end{frame}
+\begin{frame}[fragile]{Reader Monad}{Type}
+  Recall: $\mathsf{newtype}\ \Reader{a} = \mathsf{Reader} \left\{ \fn{runReader} ::\ c\ \rightarrow\ a \right\}$
+  \begin{block}{\textbf{Exercise: }Reader Type Definition}
+    \begin{align*}
+      \return &:: a\ \rightarrow\ \Reader{a}\\
+      \return\ a\ &= \uncover<2->{\mathsf{Reader}\ (\lambda\,\underline{\phantom{c}}\ \rightarrow\ a)}\\[1.5em]
+      (\bind) &:: \Reader{a}\ \rightarrow\ (a\ \rightarrow\ \Reader{b})\ \rightarrow\ \Reader{b}\\
+      x\ \bind\ fn &=\uncover<3->{\mathsf{Reader}\ (\lambda\,c\ \rightarrow
+      \fn{runReader}\ (fn\ (\fn{runReader}\ x\ c))\ c)}\\
+    \end{align*}
+  \end{block}
+\end{frame}
+\begin{frame}[fragile]{Reader Monad}{Functions}
+    \begin{block}{\textbf{Homework: }Reader Functions}
+      \begin{align*}
+        \fn{ask} &:: \Reader{a}\ \rightarrow\ a\\
+        \fn{asks} &:: \Reader{a}\ \rightarrow\ (a\ \rightarrow\ \Reader{b})\ \rightarrow\ \Reader{b}\\
+        \fn{local} &:: (c\ \rightarrow\ c\,')\ \rightarrow\ \mathbf{Reader}\,c\,'\,a\ \rightarrow\ \Reader{a}\\
+      \end{align*}
+    \end{block}
 \end{frame}
 \subsection{Example}
 \begin{frame}
-  
+  \centering
+  \begin{tcolorbox}[enhanced, size=minimal,auto outer arc,
+    width=2.8cm,octogon arc, colback=red,colframe=white,colupper=white, fontupper=\fontsize{7mm}{7mm}\selectfont\bfseries\sffamily, halign=center,valign=center,
+    square,arc is angular, borderline={1mm}{-3mm}{red} ]
+    CODE
+  \end{tcolorbox}
 \end{frame}

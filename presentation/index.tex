@@ -1,4 +1,6 @@
 \documentclass{beamer}
+\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
+\usepackage{xcolor}
 \usetheme{Boadilla}
 \usepackage[cache=false]{minted}
 \usepackage{multicol}
@@ -6,9 +8,76 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
+\usepackage[T1]{fontenc} %
+\usepackage[skins,most]{tcolorbox}
+\usepackage{mathtools}
+\usepackage{tikz}
+\usepackage{addfont}
+\addfont{OT1}{d7seg}{\dviiseg}
+\usepackage{fontspec}
+\usepackage{changepage}
+\let\origcheckmark\checkmark % save the macro 
+\let\checkmark\relax         % reset it, so it can be defined using `\newcommand` can be used without error
+\usepackage{dingbat}     % load package
+\let\altcheckmark\checkmark  % save that macro definition under a different name if required
+\let\checkmark\origcheckmark 
+\usetikzlibrary{decorations.text, shadows}
+% \newfontfamily\looney[]{Folks}
+
+\definecolor{darkblueOuter}{RGB}{1,11,23}
+\definecolor{darkblueInner}{RGB}{1,18,37}
 
 \graphicspath{{./images/}}
 \input{defs}
+% \tcbset{every box/.style={highlight math style={boxrule=0pt,arc=3pt, left=0pt,right=0pt,top=0pt,bottom=0pt,boxsep=2pt}} }
+
+\definecolor{BlueGreen}{rgb}{0.0, 0.87, 0.87}
+\definecolor{Amber}{rgb}{1.0, 0.49, 0.0}
+\newtcbox{\mylib}{enhanced,nobeforeafter,tcbox raise base,boxrule=0.4pt,top=0.5pt,bottom=0.5pt,
+  right=0mm,left=0mm,arc=1pt,boxsep=1pt,before upper={\vphantom{dlg}},
+  colframe=BlueGreen!50!white,coltext=BlueGreen!25!black,colback=BlueGreen!50,
+  overlay={\begin{tcbclipinterior}(frame.north west);\end{tcbclipinterior}}}
+
+\robustify{\mylib}
+
+\pdfstringdefDisableCommands{%
+  \def\mylib#1{'#1'}%
+}
+
+\newtcbox{\mylibo}{enhanced,nobeforeafter,tcbox raise base,boxrule=0.4pt,top=0.5pt,bottom=0.5pt,
+  right=0mm,left=0mm,arc=1pt,boxsep=1pt,before upper={\vphantom{dlg}},
+  colframe=Amber!50!white,coltext=Amber!25!black,colback=Amber!50,
+  overlay={\begin{tcbclipinterior}(frame.north west);\end{tcbclipinterior}}}
+
+\robustify{\mylibo}
+
+\pdfstringdefDisableCommands{%
+  \def\mylibo#1{'#1'}%
+}
+
+\immediate\write18{sh ./scripts/reader.sh > reader-motivation.hs}
+\immediate\write18{sh ./scripts/reader-types.sh > reader-types.hs}
+\immediate\write18{sh ./scripts/state.sh > state-motivation.hs}
+\immediate\write18{sh ./scripts/state-types.sh > state-types.hs}
+\immediate\write18{sh ./scripts/writer.sh > writer-motivation.hs}
+\immediate\write18{sh ./scripts/writer-types.sh > writer-types.hs}
+
+\setminted[csharp]{baselinestretch=.8,fontsize=\tiny,autogobble}
+\makeatletter
+\newenvironment{code}
+ {\RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}%
+  \def\FV@BProcessLine##1{%
+    \hbox{%
+      \hbox to\z@{\hss\theFancyVerbLine\kern\FV@NumberSep}%
+      \FancyVerbFormatLine{##1}%
+    }%
+  }%
+  \VerbatimEnvironment
+  \setbox\z@=\hbox\bgroup
+  \begin{minted}{csharp}}
+ {\end{minted}\egroup
+  \leavevmode\vbox{\box\z@}}
+\makeatother
 
 \begin{document}
 \titlegraphic{\vspace{-3em}\includegraphics[width=.3\textwidth]{hunted-wumpus.jpg}}
@@ -20,58 +89,81 @@
   \end{frame}
   \begin{frame}{Agenda}
     \begin{columns}[t]
-      \begin{column}{.4\textwidth}
-        \tableofcontents[sections={1-2}]
+      \begin{column}{.5\textwidth}
+        \tableofcontents[sections={1-3}]
       \end{column}
       \begin{column}{.4\textwidth}
-        \tableofcontents[sections={3-5}]
+        \tableofcontents[sections={4-6}]
       \end{column}
     \end{columns}
   \end{frame}
+  \section{What is Hunt the Wumpus?}
+  \begin{frame}{What is Hunt the Wumpus?}{Why are we Hunting Poor Trevor?}
+    You, the brave adventurer, have gotten lost and stumbled into a dark cavern.
+    You can barely see your hand in front of your face.
+    You heard rumours that Trevor, the Wumpus, lived in these here parts.\\[1em]
+    Ahead of you are:
+    \begin{itemize}[<+-| alert@+>]
+      \item 20 Caves, each connected to 3 other caves
+      \item 5 Arrows (a.k.a. 5 attempts to kill Trevor)
+      \item 2 crazy bats (that like to transport you to other caves)
+      \item 2 endless pits (that almost certainly mean death)
+      \item Some great fun from \dviiseg{1973}
+    \end{itemize}
+    \pause{On your turn you can Move to an adjoining cave, via a dark tunnel,
+      or shoot one of your crooked arrows in the hope of hitting the Wumpus.}\\
+    \pause{Fortunately, the bats make a lot of noise,
+      the pits cause an awful draft, \& Trevor is quite smelly!}
+  \end{frame}
   \section{What is a Monad?}
   \subsection{Intuition}
-  \begin{frame}[fragile]{What is a Monad? (Recap)}{Intuition}
-    Let's make a program
-    
-    \begin{minted}{haskell}
-      main = do putStrLn "What is 2 + 2?"
-                x <- readLn
-                if x == 4
-                    then putStrLn "You're right!"
-                    else putStrLn "You're wrong!"
-    \end{minted}
+  \begin{frame}[fragile]{What is a Monad?}{Intuition}
+    \begin{columns}
+      \begin{column}{.4\textwidth}
+        \includegraphics[width=\textwidth]{monad-meme}
+      \end{column}
+      \begin{column}{.4\textwidth}
+        \begin{itemize}
+          \item A monad abstracts computation away
+          \item It is defined by two functions:
+            \begin{itemize}
+              \item one to take non-monadic value and \textit{return} a monadic one
+              \item another to take monadic value and \textit{bind} the underlying value to a function
+            \end{itemize}
+        \end{itemize}
+      \end{column}
+    \end{columns}
   \end{frame}
   \subsection{Theory}
-  \begin{frame}{What is a Monad? (Recap)}{Theory}
+  \begin{frame}{What is a Monad?}{Theory}
     \begin{block}{Functor Definition}
       \begin{align*}
-        \fmap &:: \mathbf{Functor}\ \mathsf{F}\ \Rightarrow\ (a\ \rightarrow\ b)\ \rightarrow\ \F{a}\ \rightarrow\ \F{b}\\
+        \fmap &:: \mathbf{Functor}\ \mathsf{f}\ \Rightarrow\ (a\ \rightarrow\ b)\ \rightarrow\ \F{a}\ \rightarrow\ \F{b}\\
       \end{align*}
     \end{block}
     \begin{block}{Applicative Definition}
       \begin{align*}
-        \pure &:: \mathbf{Applicative}\ \mathsf{A}\ \Rightarrow\ a\ \rightarrow\ \A{a}\\
-        (\app) &:: \mathbf{Applicative}\ \mathsf{A}\ \Rightarrow\ \A{(a\ \rightarrow\ b)}\ \rightarrow\ \A{a}\ \rightarrow\ \A{b}\\
+        \pure &:: \mathbf{Applicative}\ \mathsf{f}\ \Rightarrow\ a\ \rightarrow\ \A{a}\\
+        (\app) &:: \mathbf{Applicative}\ \mathsf{f}\ \Rightarrow\ \A{(a\ \rightarrow\ b)}\ \rightarrow\ \A{a}\ \rightarrow\ \A{b}\\
       \end{align*}
     \end{block}
   \end{frame}
-  \begin{frame}{What is a Monad? (Recap)}{Theory}
+  \begin{frame}{What is a Monad?}{Theory}
     \begin{block}{Monad Definition}
       \begin{align*}
-        \return &:: \mathbf{Monad}\ \mathsf{M}\ \Rightarrow\ a\ \rightarrow\ \M{a}\\
-        (\bind) &:: \mathbf{Monad}\ \mathsf{M}\ \Rightarrow\ \M{a}\ \rightarrow\ (a\ \rightarrow\ \M{b})\ \rightarrow\ \M{b}\\
+        \return &:: \mathbf{Monad}\ \mathsf{m}\ \Rightarrow\ a\ \rightarrow\ \M{a}\\
+        (\bind) &:: \mathbf{Monad}\ \mathsf{m}\ \Rightarrow\ \M{a}\ \rightarrow\ (a\ \rightarrow\ \M{b})\ \rightarrow\ \M{b}\\
       \end{align*}
     \end{block}
     \begin{itemize}
-      \item $\return$ constructs the monad\\
+      \item $\return$ constructs the monad from a value\\
       \item $\bind$ allows composition of the monad\\
-      \item Note: You might see other people say you need $\join$ to define the monad,
-        providing either $\bind$ or $\join$ is ``rigorously'' equivalent.
+      \item \textit{Note: You might see other people say you need $\join$ to define the monad,
+        providing either $\bind$ or $\join$ is ``rigorously'' equivalent.}
     \end{itemize}
   \end{frame}
-
   \input{reader}%
-  \input{writer}%
   \input{state}%
+  \input{writer}%
   \input{final}%
 \end{document}

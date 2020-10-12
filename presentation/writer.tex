@@ -1,14 +1,81 @@
 \section{Writer}
-\subsection{First Principals}
-\begin{frame}
-  
+\subsection{Motivation}
+\begin{frame}[fragile]{Writer Monad}{Motivation}
+  {\tiny\inputminted[escapeinside=||,breakafter=\$]{haskell}{writer-motivation.hs}}
+  \begin{itemize}
+    \item Notice how we must add onto this list of strings
+    \item Functions don't care about the logs from what proceeded them, so why should we have to know about them
+  \end{itemize}
 \end{frame}
 \subsection{Definition}
-\begin{frame}
-  
+\begin{frame}[fragile]{Writer Monad}{Type}
+    {\scriptsize\inputminted[escapeinside=||]{haskell}{writer-types.hs}}
+    \begin{block}{\textbf{Exercise: }Writer Type Definition}
+      \begin{align*}
+        \mathsf{writer}\ \WriterH{a} &= \mathsf{Writer} \left\{ \fn{runWriter} ::\ \uncover<2->{(\mylib{$[\ell]$}, \mylibo{a})} \right\}\\
+      \end{align*}
+    \end{block}
+\end{frame}
+\begin{frame}[fragile]{Writer Monad}{Type}
+  Recall: $\mathsf{writer}\ \Writer{a} = \mathsf{Writer} \left\{ \fn{runWriter} ::\ ([\ell], a) \right\}$
+  \begin{block}{\textbf{Exercise: }Writer Type Definition}
+    \begin{align*}
+      \return &:: a\ \rightarrow\ \Writer{a}\\
+      \return\ a\ &= \uncover<2->{\mathsf{Writer}\ ([\,], a)}\\[1.5em]
+      (\bind) &::
+      \begin{aligned}[t]
+        \Writer{a}\ \rightarrow\ &{\text{\small\color{gray}\carriagereturn}}\\(a\ \rightarrow\ &\Writer{b})\ \rightarrow\ \Writer{b}
+      \end{aligned}\\
+      x\ \bind\ fn &=\uncover<3->{\mathsf{Writer}\ (
+          \begin{aligned}[t]
+            \mathbf{let}&\ 
+            \begin{aligned}[t]
+              (l, a) &= \fn{runWriter}\ x\\
+              (l\,', b) &= \fn{runWriter}\ (fn\ a)
+            \end{aligned}\\
+            \mathbf{in}&\ (l\!\mappend\!l\,', b))
+          \end{aligned}}\\
+    \end{align*}
+  \end{block}
+\end{frame}
+\begin{frame}[fragile]{Writer Monad}{Monoid}
+  Let: $\mathsf{writer}\ \WriterM{a} = \mathsf{Writer} \left\{ \fn{runWriter} ::\ (\ell, a) \right\}$
+  \begin{block}{\textbf{Exercise: }Writer Type Definition}
+    \begin{align*}
+      \return &:: a\ \rightarrow\ \WriterM{a}\\
+      \return\ a\ &= \mathsf{Writer}\ (\fn{mempty}, a)\\[1.5em]
+      (\bind) &::
+      \begin{aligned}[t]
+        \WriterM{a}\ \rightarrow\ &{\text{\small\color{gray}\carriagereturn}}\\(a\ \rightarrow\ &\WriterM{b})\ \rightarrow\ \WriterM{b}
+      \end{aligned}\\
+      x\ \bind\ fn &=\mathsf{Writer}\ (
+          \begin{aligned}[t]
+            \mathbf{let}&\ 
+            \begin{aligned}[t]
+              (l, a) &= \fn{runWriter}\ x\\
+              (l\,', b) &= \fn{runWriter}\ (fn\ a)
+            \end{aligned}\\
+            \mathbf{in}&\ (\fn{mappend}\ l\ l\,', b))
+          \end{aligned}\\
+    \end{align*}
+  \end{block}
+\end{frame}
+\begin{frame}[fragile]{Writer Monad}{Functions}
+    \begin{block}{\textbf{Homework: }Writer Functions}
+      \begin{align*}
+        \fn{tell} &:: \ell\ \rightarrow\ \WriterM{\unit}\\
+        \fn{censor} &:: (\ell\ \rightarrow\ \ell)\ \rightarrow\ \WriterM{a}\ \rightarrow\ \WriterM{a}\\
+        \fn{listen} &:: \WriterM{a}\ \rightarrow\ \WriterM{(a, \ell)}\\
+      \end{align*}
+    \end{block}
 \end{frame}
 \subsection{Example}
 \begin{frame}
-  
+  \centering
+  \begin{tcolorbox}[enhanced, size=minimal,auto outer arc,
+    width=2.8cm,octogon arc, colback=red,colframe=white,colupper=white, fontupper=\fontsize{7mm}{7mm}\selectfont\bfseries\sffamily, halign=center,valign=center,
+    square,arc is angular, borderline={1mm}{-3mm}{red} ]
+    CODE
+  \end{tcolorbox}
 \end{frame}
 
