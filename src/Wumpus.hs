@@ -1,6 +1,8 @@
 -- vim: fdm=marker
 module Wumpus
   ( runWumpus
+  , GameState(..)
+  , WorldConfig(..)
   , initialState
   , initialWorld
   ) where
@@ -39,7 +41,8 @@ loop gs wc = do
   -- Player action
   action <- getAction tunnels
   let (gs', logs) = execute action gs wc
-  mapM_ putStrLn logs
+  let shouldDebug l = (isDebug wc) || (not $ isPrefixOf "[DEBUG]" l)
+  mapM_ putStrLn $ filter shouldDebug logs
 
   case gameOver gs' of
     Nothing -> loop gs' wc
@@ -63,11 +66,12 @@ execute a@(Move c) gs wc =
   let event = getMoveEvent a gs wc
       (gs', eCave) = emptyCave gs wc
       gs'' = gs' {gCave = c, gHistory = a : (gHistory gs)}
+      logs = ["[DEBUG] Updated cave to Cave " ++ show c, "[DEBUG] Updated history with action " ++ show a]
    in case event of
-        Just Wumpus -> (gs'' {gameOver = Just Lose}, [Msg.encounterWumpus])
-        Just Pit    -> (gs'' {gameOver = Just Lose}, [Msg.losePits])
-        Just Bat    -> (gs'' {gCave = eCave}, [Msg.encounterBats])
-        Nothing     -> (gs'', [])
+        Just Wumpus -> (gs'' {gameOver = Just Lose}, Msg.encounterWumpus : logs)
+        Just Pit    -> (gs'' {gameOver = Just Lose}, Msg.losePits : logs)
+        Just Bat    -> (gs'' {gCave = eCave}, Msg.encounterBats : ("[DEBUG] Updated cave to Cave " ++ show eCave) : logs)
+        Nothing     -> (gs'', logs)
 
 execute a@(Shoot c) gs wc =
 --{{{
@@ -75,13 +79,14 @@ execute a@(Shoot c) gs wc =
       gs' = gs { crookedArrows = remainingArrows }
       event = getShootEvent a gs'
       gs'' = gs' { gHistory = a : (gHistory gs) }
+      logs = ["[DEBUG] Updated history with action " ++ show a]
    in case event of
-        Just Kill      -> (gs'' {gameOver = Just Win}, [Msg.winWumpus])
-        Just OutOfAmmo -> (gs'' {gameOver = Just Lose}, [Msg.missed, Msg.loseArrows])
+        Just Kill      -> (gs'' {gameOver = Just Win}, Msg.winWumpus : logs)
+        Just OutOfAmmo -> (gs'' {gameOver = Just Lose}, [Msg.missed, Msg.loseArrows] ++ logs)
         Nothing -> let (gs''', trevor') = anotherCave gs'' wc
                     in if trevor' == c
-                       then (gs''' {trevor = trevor', gameOver = Just Lose}, [Msg.loseWumpus])
-                       else (gs''' {trevor = trevor'}, [Msg.missed])
+                       then (gs''' {trevor = trevor', gameOver = Just Lose}, Msg.loseWumpus : logs)
+                       else (gs''' {trevor = trevor'}, Msg.missed : logs)
 -- }}}
 
 -- | Helper Functions

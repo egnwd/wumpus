@@ -16,9 +16,10 @@ type Cave = Int
 type Maze = Graph
 
 data WorldConfig = W
-  { maze   :: Maze
-  , pits   :: [Cave]
-  , bats   :: [Cave]
+  { maze    :: Maze
+  , pits    :: [Cave]
+  , bats    :: [Cave]
+  , isDebug :: Bool
   } deriving (Show)
 
 data Action = Shoot Cave | Move Cave deriving (Show)
@@ -44,9 +45,10 @@ instance Show GameState where
 
 initialWorld :: WorldConfig
 initialWorld = W
-  { maze   = initialMaze
-  , pits   = intitalPits
-  , bats   = initialBats
+  { maze    = initialMaze
+  , pits    = intitalPits
+  , bats    = initialBats
+  , isDebug = False
   }
 
 initialMaze :: Maze
