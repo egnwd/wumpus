@@ -2,7 +2,7 @@ name:                wumpus
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/egnwd/fa-talk#readme
+homepage:            https://github.com/egnwd/wumpus#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Elliot Greenwood
