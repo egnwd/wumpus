@@ -118,36 +118,26 @@
   \section{What is a Monad?}
   \subsection{Intuition}
   \begin{frame}[fragile]{What is a Monad?}{Intuition}
-    \begin{columns}
-      \begin{column}{.4\textwidth}
-        \includegraphics[width=\textwidth]{monad-meme}
-      \end{column}
-      \begin{column}{.4\textwidth}
+    \begin{columns}[t]
+      \begin{column}{.9\textwidth}
         \begin{itemize}
-          \item A monad abstracts computation away
-          \item It is defined by two functions:
-            \begin{itemize}
-              \item one to take non-monadic value and \textit{return} a monadic one
-              \item another to take monadic value and \textit{bind} the underlying value to a function
-            \end{itemize}
+          \item The functional programming style forces you to expose your inputs, outputs and intentions
+          \item Monads help cover them up again
+          \item They can then allow you to seamlessly introduce abstractions,
+            \textit{only where they are needed}, letting you focus on the business logic
+          \item They provide convenient frameworks for effects found in imperative languages\,\footnotemark
+            (e.g. raising exceptions,
+            null checking,
+            random number generators,
+            and, \textit{cough}, I/O)
         \end{itemize}
       \end{column}
+      \begin{column}{.1\textwidth}
+      \end{column}
     \end{columns}
+    \footnotetext{\scriptsize Wadler, P. (1995), Monads for Functional Programming, in 'Advanced Functional Programming' , Springer, London , pp. 24--52 .}
   \end{frame}
   \subsection{Theory}
-  \begin{frame}{What is a Monad?}{Theory}
-    \begin{block}{Functor Definition}
-      \begin{align*}
-        \fmap &:: \mathbf{Functor}\ \mathsf{f}\ \Rightarrow\ (a\ \rightarrow\ b)\ \rightarrow\ \F{a}\ \rightarrow\ \F{b}\\
-      \end{align*}
-    \end{block}
-    \begin{block}{Applicative Definition}
-      \begin{align*}
-        \pure &:: \mathbf{Applicative}\ \mathsf{f}\ \Rightarrow\ a\ \rightarrow\ \A{a}\\
-        (\app) &:: \mathbf{Applicative}\ \mathsf{f}\ \Rightarrow\ \A{(a\ \rightarrow\ b)}\ \rightarrow\ \A{a}\ \rightarrow\ \A{b}\\
-      \end{align*}
-    \end{block}
-  \end{frame}
   \begin{frame}{What is a Monad?}{Theory}
     \begin{block}{Monad Definition}
       \begin{align*}
