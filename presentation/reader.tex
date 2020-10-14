@@ -54,8 +54,8 @@
 \begin{frame}[fragile]{Reader Monad}{Functions}
     \begin{block}{\textbf{Homework: }Reader Functions}
       \begin{align*}
-        \fn{ask} &:: \Reader{a}\ \rightarrow\ a\\
-        \fn{asks} &:: \Reader{a}\ \rightarrow\ (a\ \rightarrow\ \Reader{b})\ \rightarrow\ \Reader{b}\\
+        \fn{ask} &:: \Reader{c}\\
+        \fn{asks} &:: (c\ \rightarrow\ a)\ \rightarrow\ \Reader{a}\\
         \fn{local} &:: (c\ \rightarrow\ c\,')\ \rightarrow\ \mathbf{Reader}\,c\,'\,a\ \rightarrow\ \Reader{a}\\
       \end{align*}
     \end{block}
@@ -69,3 +69,4 @@
     CODE
   \end{tcolorbox}
 \end{frame}
+
